@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { v4 as uuidv4 } from 'uuid';
 
-export function chunkWithOverlap(
+export function chunkText(
   text: string,
   chunkSize: number = 800,
   overlap: number = 100,
@@ -17,146 +18,90 @@ export function chunkWithOverlap(
   return chunks;
 }
 
-export async function embedChunk(text: string): Promise<number[]> {
-  const res = await axios.post('http://localhost:11434/api/embeddings', {
+/**
+ * Embed a chunk of text using Ollama.
+ */
+async function getEmbedding(text: string): Promise<number[]> {
+  const response = await axios.post('http://localhost:11434/api/embeddings', {
     model: 'nomic-embed-text',
     prompt: text,
   });
-  return res.data.embedding;
+  return response.data.embedding;
 }
 
-export async function indexChunkInVespa(
-  chunkId: string,
-  chunk: string,
-  embedding: number[],
-) {
-  const doc = {
-    id: `id:rag_doc:rag_doc::${chunkId}`,
+/**
+ * Push a chunk with embedding to Vespa.
+ */
+async function addToVespa(id: string, content: string, embedding: number[]) {
+  const payload = {
     fields: {
-      content: chunk,
-      embedding: embedding,
+      id,
+      content,
+      embedding,
     },
   };
 
-  const encodedId = encodeURIComponent(chunkId);
-  const url = `http://localhost:8080/document/v1/rag_doc/rag_doc/docid/${encodedId}`;
-  await axios.post(url, doc);
-}
-
-export async function searchChunks(query: string): Promise<string[]> {
-  const embedding = await embedChunk(query);
-
-  const response = await axios.post('http://localhost:8080/search/', {
-    yql: 'select text from sources * where ([{"targetNumHits":5}]nearestNeighbor(embedding, query_embedding));',
-    hits: 5,
-    ranking: {
-      features: {
-        query: {
-          query_embedding: embedding,
-        },
-      },
+  await axios.post(`http://localhost:8080/document/v1/default/rag_doc/docid/${id}`, payload, {
+    headers: {
+      'Content-Type': 'application/json',
     },
   });
 
-  return (response.data.root.children || []).map((hit: any) => hit.fields.text);
+  console.log(`✅ Ingested chunk as document: ${id}`);
 }
 
-export async function generateAnswer(
-  contexts: string[],
-  question: string,
-): Promise<string> {
-  const prompt = `
-  You are a helpful assistant. Answer the question using the context below.
-  
-  Context:
-  ${contexts.join('\n\n')}
-  
-  Question:
-  ${question}
-  
-  Answer:
-  `;
+/**
+ * Main ingestion function to be imported and called from fetchGoogleDocsAsString.
+ */
+export async function ingestData(documentText: string, baseId: string): Promise<void> {
+  const chunks = chunkText(documentText, 500);
 
-  const res = await axios.post('http://localhost:11434/api/generate', {
-    model: 'llama3',
+  await Promise.all(
+    chunks.map(async (chunk, i) => {
+      const embedding = await getEmbedding(chunk);
+      const docId = encodeURIComponent(`${baseId}-${i}-${uuidv4()}`);
+      await addToVespa(docId, chunk, embedding);
+    })
+  );
+}
+
+export async function searchFromVespa(queryEmbedding: number[], topK = 5): Promise<string[]> {
+  const body = {
+    yql: `select content from sources * where ([{"targetNumHits":${topK}}]nearestNeighbor(embedding, query_embedding));`,
+    hits: topK,
+    query_embedding: {
+      values: queryEmbedding,
+    },
+  };
+
+  const response = await fetch('http://localhost:8080/search/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  const result = await response.json();
+
+  const hits = result.root.children || [];
+  return hits.map((hit: any) => hit.fields.content); // returns top `content` strings
+}
+
+export async function answerFromQuery(userQuery: string): Promise<string> {
+  // Step 1: Generate embedding from query
+  const queryEmbedding = await getEmbedding(userQuery);
+
+  // Step 2: Search in Vespa for similar documents
+  const topDocs = await searchFromVespa(queryEmbedding, 5);
+  const context = topDocs.join('\n---\n');
+
+  // Step 3: Generate final answer using LLM
+  const prompt = `Answer the following question using the context below.\n\nContext:\n${context}\n\nQuestion: ${userQuery}\nAnswer:`;
+
+  const llmResponse = await axios.post('http://localhost:11434/api/generate', {
+    model: 'phi3',
     prompt: prompt,
     stream: false,
   });
 
-  return res.data.response.trim();
-}
-
-async function queryVespa(queryText: string, topK = 5) {
-  const vespaUrl = 'http://localhost:8080/search/';
-
-  const queryBody = {
-    yql: `select * from sources * where userQuery();`,
-    query: queryText,
-    hits: topK,
-  };
-
-  try {
-    const response = await axios.post(vespaUrl, queryBody, {
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    const hits = response.data.root.children || [];
-    return hits.map((hit: any) => hit.fields.content);
-  } catch (error) {
-    console.error('Error querying Vespa:', error);
-    return [];
-  }
-}
-
-async function generateAnswerWithLLM(
-  query: string,
-  contextChunks: string[],
-): Promise<string> {
-  const context = contextChunks.join('\n\n');
-
-  const prompt = `
-You are an AI assistant. Use the following context to answer the question as accurately as possible.
-
-Context:
-${context}
-
-Question: ${query}
-Answer:
-  `;
-
-  try {
-    const response = await axios.post(
-      'http://localhost:11434/api/chat',
-      {
-        model: 'phi3', // ✅ using the local phi3 model
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          { role: 'user', content: prompt },
-        ],
-        stream: false,
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      },
-    );
-
-    return response.data.message.content.trim();
-  } catch (error: any) {
-    console.error(
-      'Error calling Ollama phi3 model:', error.message || error,
-    );
-    return 'Error generating answer with local phi3 model.';
-  }
-}
-
-export async function answerUserQuery(query: string) {
-  const contextChunks = await queryVespa(query);
-  if (contextChunks.length === 0) {
-    return "Sorry, I couldn't find any relevant information.";
-  }
-
-  const answer = await generateAnswerWithLLM(query, contextChunks);
-  return answer;
+  return llmResponse.data.response.trim();
 }

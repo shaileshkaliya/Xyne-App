@@ -1,12 +1,13 @@
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
-import { ingestData } from '../rag-utilities/dataIngestion';
+import { ingestData } from '../rag-utilities/ragUtilities';
 
 export async function fetchGoogleDocsAsString(
   auth: OAuth2Client,
 ): Promise<string> {
   const drive = google.drive({ version: 'v3', auth });
   const docsAPI = google.docs({ version: 'v1', auth });
+  
 
   const oneMonthAgo = new Date();
 oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
@@ -19,6 +20,7 @@ oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
   const files = res.data.files || [];
   let finalText = '';
+
 
   const ingestionPromises: Promise<void>[] = [];
 
@@ -55,6 +57,7 @@ ${text}
     ingestionPromises.push(ingestData(docInfo, sourceId));
 
     finalText += docInfo + '\n\n';
+    break;
   }
 
   await Promise.all(ingestionPromises);

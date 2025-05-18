@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
-import { ingestData } from '../rag-utilities/dataIngestion';
+import { ingestData } from '../rag-utilities/ragUtilities';
 
 export async function fetchGoogleSheetsAsString(
   auth: OAuth2Client,

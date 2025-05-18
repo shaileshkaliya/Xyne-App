@@ -4,11 +4,20 @@ import dotenv from 'dotenv';
 import { fetchGoogleDocsAsString } from './services/docsExtractor';
 import { fetchGoogleSheetsAsString } from './services/sheetsExtractor';
 import { fetchGoogleCalendarsAsString } from './services/calendarExtractor';
-import { answerUserQuery } from './rag-utilities/ragUtilities'
+import { answerFromQuery } from './rag-utilities/ragUtilities';
+import path from 'path';
 
 dotenv.config();
 
 const app = express();
+app.use(express.json());
+
+app.use(express.static(path.join(__dirname, '../client')));
+
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(__dirname, '../client/index.html'));
+});
+
 
 
 async function main() {
@@ -54,20 +63,20 @@ app.get('/auth/callback', async (req: Request, res: Response): Promise<any> => {
   }
 });
 
-app.get('/chat', async (req: Request, res: Response): Promise<any> => {
+app.post('/chat', async (req: Request, res: Response): Promise<any> => {
   try {
-    const query = req.body;
+    console.log(req);
+    const { query } = req.body;
     if(query.length === 0){
       return res.status(500).send({error:"No query found !"});
     }
-    const response = await answerUserQuery(query);
+    const response = await answerFromQuery(query);
     return res.status(200).send({response});
     
   } catch (err) {
     console.error("Error in fetching response", err);
-    res.status(500).send("Authentication failed");
+    res.status(500).send("Error occured : "+err);
   }
 });
-
 
 export default app;
