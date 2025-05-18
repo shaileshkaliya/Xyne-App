@@ -6,6 +6,7 @@ import { fetchGoogleSheetsAsString } from './services/sheetsExtractor';
 import { fetchGoogleCalendarsAsString } from './services/calendarExtractor';
 import { answerFromQuery } from './rag-utilities/ragUtilities';
 import path from 'path';
+import { AUTH_ENDPOINT, CHAT_ENDPOINT, OAUTH_CALLBACK_ENDPOINT } from './utils/constants';
 
 dotenv.config();
 
@@ -33,12 +34,12 @@ async function main() {
   console.log('✅ All sources fetched and indexed!');
 }
 
-app.get('/auth', (req: Request, res: Response) => {
+app.get(AUTH_ENDPOINT, (req: Request, res: Response) => {
   const url = getAuthUrl();
   res.redirect(url);
 });
 
-app.get('/auth/callback', async (req: Request, res: Response): Promise<any> => {
+app.get(OAUTH_CALLBACK_ENDPOINT, async (req: Request, res: Response): Promise<any> => {
   try {
     const { code } = req.query;
     if (!code) return res.status(400).send("Missing auth code");
@@ -63,7 +64,7 @@ app.get('/auth/callback', async (req: Request, res: Response): Promise<any> => {
   }
 });
 
-app.post('/chat', async (req: Request, res: Response): Promise<any> => {
+app.post(CHAT_ENDPOINT, async (req: Request, res: Response): Promise<any> => {
   try {
     console.log(req);
     const { query } = req.body;
