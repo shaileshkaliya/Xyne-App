@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
+import { OLLAMA_EMBEDDING_URI, OLLAMA_TEXT_GENERATION_URI, VESPA_DOCUMENT_INSERT_URI, VESPA_SEARCH_URI } from '../utils/constants';
 
 export function chunkText(
   text: string,
@@ -22,7 +23,7 @@ export function chunkText(
  * Embed a chunk of text using Ollama.
  */
 async function getEmbedding(text: string): Promise<number[]> {
-  const response = await axios.post('http://localhost:11434/api/embeddings', {
+  const response = await axios.post(OLLAMA_EMBEDDING_URI, {
     model: 'nomic-embed-text',
     prompt: text,
   });
@@ -41,7 +42,7 @@ async function addToVespa(id: string, content: string, embedding: number[]) {
     },
   };
 
-  await axios.post(`http://localhost:8080/document/v1/default/rag_doc/docid/${id}`, payload, {
+  await axios.post(VESPA_DOCUMENT_INSERT_URI(id), payload, {
     headers: {
       'Content-Type': 'application/json',
     },
@@ -74,7 +75,7 @@ export async function searchFromVespa(queryEmbedding: number[], topK = 5): Promi
     },
   };
 
-  const response = await fetch('http://localhost:8080/search/', {
+  const response = await fetch(VESPA_SEARCH_URI, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -97,7 +98,7 @@ export async function answerFromQuery(userQuery: string): Promise<string> {
   // Step 3: Generate final answer using LLM
   const prompt = `Answer the following question using the context below.\n\nContext:\n${context}\n\nQuestion: ${userQuery}\nAnswer:`;
 
-  const llmResponse = await axios.post('http://localhost:11434/api/generate', {
+  const llmResponse = await axios.post(OLLAMA_TEXT_GENERATION_URI, {
     model: 'phi3',
     prompt: prompt,
     stream: false,
