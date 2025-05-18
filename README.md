@@ -4,11 +4,14 @@
 Here's a complete and well-structured README.md file : 
 
 - Project description
+- Demo Video Link
 - Setup guide (Vespa, Ollama, app)
+- Oauth + Data Ingestion flow
+- Question-Answer flow
 - Architecture explanation with system flow
+- Tech Stack
 - Improvement notes
-- Clean markdown formatting
-- Embedded system architecture diagram
+- Sample Queries
 
 
 # Xyne RAG: Multi-Source Google Workspace Chat with Vespa + Ollama
@@ -24,6 +27,12 @@ Xyne-RAG is a Retrieval-Augmented Generation (RAG) application that allows users
     - git clone https://github.com/shaileshkaliya/Xyne-App.git
     - cd xyne-rag
     - npm install
+
+
+- 📦 Demo Video Link
+
+  https://drive.google.com/file/d/19rvI0JfucUe0Eru1Vt-ZwWUUkFvBse1b/view?usp=drive_link 
+
 
 - 🐋 Step 1: Set up Vespa using Docker
 
