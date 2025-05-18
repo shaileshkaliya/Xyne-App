@@ -20,6 +20,13 @@ Xyne-RAG is a Retrieval-Augmented Generation (RAG) application that allows users
 
 --------
 
+## Demo Video Link
+
+  https://drive.google.com/file/d/19rvI0JfucUe0Eru1Vt-ZwWUUkFvBse1b/view?usp=drive_link 
+
+--------
+
+
 ## ⚙️ Setup Instructions
 
 - 📦 Clone the repository
@@ -27,11 +34,6 @@ Xyne-RAG is a Retrieval-Augmented Generation (RAG) application that allows users
     - git clone https://github.com/shaileshkaliya/Xyne-App.git
     - cd xyne-rag
     - npm install
-
-
-- 📦 Demo Video Link
-
-  https://drive.google.com/file/d/19rvI0JfucUe0Eru1Vt-ZwWUUkFvBse1b/view?usp=drive_link 
 
 
 - 🐋 Step 1: Set up Vespa using Docker
