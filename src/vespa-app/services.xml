@@ -1,0 +1,22 @@
+<services version="1.0">
+    <container id="default" version="1.0">
+        <document-api />
+        <search />
+        <http>
+            <server id="default" port="8080" />
+        </http>
+    </container>
+    
+    <content id="mycontent" version="1.0">
+        <redundancy>1</redundancy>
+        <documents>
+            <document type="rag_doc" mode="index" />
+        </documents>
+        <engine>
+            <proton />
+        </engine>
+        <nodes>
+            <node distribution-key="0" hostalias="node1" />
+        </nodes>
+    </content>
+</services>
