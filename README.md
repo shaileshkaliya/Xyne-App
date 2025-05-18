@@ -99,6 +99,7 @@ Xyne-RAG is a Retrieval-Augmented Generation (RAG) application that allows users
 ----
 
 ## 🧩 System Architecture
+ ! (https://github.com/shaileshkaliya/Xyne-App/blob/main/System_Architecture_Xyne.png)
 
 
 ## 🛠️ Tech Stack
